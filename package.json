@@ -1,0 +1,59 @@
+{
+  "name": "@local/mermaid-diagrams",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Renders Mermaid diagrams written by the assistant beneath each completed turn in Web Chat",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/svngoku/dsh-mermaid-diagrams.git"
+  },
+  "homepage": "https://github.com/svngoku/dsh-mermaid-diagrams#readme",
+  "bugs": {
+    "url": "https://github.com/svngoku/dsh-mermaid-diagrams/issues"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "plugin",
+    "mermaid",
+    "diagrams"
+  ],
+  "type": "module",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "LICENSE"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": false,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-chat"
+      ]
+    }
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node test/smoke.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.12",
+    "mermaid": "^12.3.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}

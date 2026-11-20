@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Mermaid diagrams",
+    "description": "Renders Mermaid diagrams found in an assistant reply beneath the turn, in Web Chat."
+  }
+}

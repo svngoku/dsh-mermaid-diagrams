@@ -1,0 +1,80 @@
+# Mermaid diagrams
+
+A DeepSeek Harness Web plugin that renders Mermaid diagrams **in place**: every
+```` ```mermaid ```` code block in Chat is replaced by the rendered diagram, and
+the raw code is hidden.
+
+Chat's shared Markdown renderer has no hook for a code fence's language, so a
+Slot cannot replace one. The plugin instead watches the page for rendered code
+blocks (`.md-code-block`), checks that the code is complete, valid Mermaid, hides
+the original block and mounts a diagram card right after it. Disposing the
+plugin restores every block.
+
+![icon](./icon.svg)
+
+## What it does
+
+- Replaces valid Mermaid blocks where they appear, in the position the author
+  wrote them; other code blocks are untouched.
+- Follows streaming: while a reply is being written the card tracks the block and
+  updates each time the code is valid Mermaid again.
+- Falls back to the plain code block when a diagram cannot be rendered.
+- Renders with Mermaid 12 bundled into the plugin (offline, no CDN), with a flat
+  grayscale theme: light-gray rounded nodes, hairline edges, small arrowheads,
+  thin cluster boxes, plus a matching dark palette that follows `theme/change`.
+- A chrome-less card with hover tools at the top right: view source, download
+  SVG, expand, copy.
+- 40-entry SVG cache keyed by source and color scheme.
+
+English and French copy is registered through the Client locale service.
+
+## Layout
+
+| Path | Role |
+| --- | --- |
+| `index.js` | Host half: contributes the Loader entry only. |
+| `cordis.patch.yml` | Bundle patch that inserts the `mermaid-diagrams` row. |
+| `src/client.jsx` | Browser half: card, tools, theme wiring, enhancer mount. |
+| `src/enhancer.js` | DOM watcher: finds, hides and replaces Mermaid code blocks. |
+| `src/theme.js` | Grayscale Mermaid theme variables and CSS. |
+| `src/mermaid-source.js` | Diagram type detection and Markdown extraction. |
+| `src/en.js`, `src/fr.js` | Runtime dictionaries. |
+| `locale/*.json` | Plugin-inventory title and description. |
+| `build.mjs` | Bundles `src/client.jsx` (plus Mermaid) into `client.js`. |
+| `test/smoke.mjs` | Offline tests: enhancer against a fake DOM, bundle wiring. |
+
+## Build and test
+
+```bash
+npm install
+npm run build
+npm test
+```
+
+## Install into a profile
+
+```bash
+git clone https://github.com/svngoku/dsh-mermaid-diagrams.git
+cd dsh-mermaid-diagrams
+npm install && npm run build   # optional: client.js is already committed
+dsh plugin install "$PWD"
+```
+
+or install the directory as a bundle through the Harness plugin manager. The
+bundle is linked, not copied, so rebuilding `client.js` and restarting the entry
+(in the plugin manager, toggle it off and on, or reload the page) serves the new
+code.
+
+## Limits
+
+- The replacement is DOM-based because no Slot exists for code fences; it relies
+  on the shared code block markup (`.md-code-block`, `[data-code-block-content]`)
+  and may need a selector update if that markup changes.
+- It applies to every rendered code block in the page, not only Chat.
+- Only complete, valid Mermaid is replaced; invalid code stays visible as code.
+- `client.js` is ~5 MiB because Mermaid is bundled; its module body only runs when
+  the first candidate block is validated.
+
+## License
+
+MIT, see [LICENSE](./LICENSE).
