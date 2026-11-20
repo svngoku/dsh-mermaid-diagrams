@@ -226,6 +226,19 @@ function harness(validate = async () => true) {
   assert.equal(diagramsOf([{ blocks: [{ kind: 'text', text: '```mermaid\nerDiagram\n```' }] }]).length, 1);
 }
 
+{
+  // Viewer math.
+  const { naturalSize, clampZoom, fitZoom, MIN_ZOOM, MAX_ZOOM } = await import('../src/viewer-math.js');
+  assert.deepEqual(naturalSize('<svg viewBox="0 0 640.5 320" style="max-width: 640px;">'), { width: 640.5, height: 320 });
+  assert.deepEqual(naturalSize('<svg>'), { width: 0, height: 0 });
+  assert.equal(clampZoom(0.01), MIN_ZOOM);
+  assert.equal(clampZoom(99), MAX_ZOOM);
+  assert.equal(clampZoom(0.83), 0.85);
+  assert.equal(fitZoom({ width: 2000, height: 1000 }, 1000, 800), 0.45);
+  assert.equal(fitZoom({ width: 100, height: 100 }, 1000, 800), 1.25);
+  assert.equal(fitZoom({ width: 0, height: 0 }, 1000, 800), 1);
+}
+
 //#endregion
 
 //#region built bundle
@@ -271,6 +284,7 @@ const exports = loaded[0].factory((specifier) => {
   if (specifier === 'react') return React;
   if (specifier === 'react/jsx-runtime') return nodeRequire('react/jsx-runtime');
   if (specifier === 'react-dom/client') return { createRoot: () => ({ render() {}, unmount() {} }) };
+  if (specifier === 'react-dom') return { createPortal: (node) => node };
   throw new Error(`unexpected require(${JSON.stringify(specifier)})`);
 });
 assert.equal(typeof exports.apply, 'function', 'apply exported');

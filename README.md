@@ -24,6 +24,10 @@ plugin restores every block.
   thin cluster boxes, plus a matching dark palette that follows `theme/change`.
 - A chrome-less card with hover tools at the top right: view source, download
   SVG, expand, copy.
+- **Expand** opens a full-screen viewer: dark backdrop, white panel, **Edit code**
+  (live-editable source with instant preview; an invalid edit keeps the last good
+  diagram), download, close, and a zoom pill (− / percent / +; click the percent to
+  fit). Also `Esc` to close, `+` / `-` / `0` keys, Ctrl/Cmd+wheel to zoom, drag to pan.
 - 40-entry SVG cache keyed by source and color scheme.
 
 English and French copy is registered through the Client locale service.
@@ -36,6 +40,8 @@ English and French copy is registered through the Client locale service.
 | `cordis.patch.yml` | Bundle patch that inserts the `mermaid-diagrams` row. |
 | `src/client.jsx` | Browser half: card, tools, theme wiring, enhancer mount. |
 | `src/enhancer.js` | DOM watcher: finds, hides and replaces Mermaid code blocks. |
+| `src/viewer.jsx` | Full-screen viewer (zoom, pan, live code editor). |
+| `src/viewer-math.js` | Pure zoom and sizing math, unit-tested. |
 | `src/theme.js` | Grayscale Mermaid theme variables and CSS. |
 | `src/mermaid-source.js` | Diagram type detection and Markdown extraction. |
 | `src/en.js`, `src/fr.js` | Runtime dictionaries. |

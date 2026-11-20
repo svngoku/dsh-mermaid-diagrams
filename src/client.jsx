@@ -15,6 +15,7 @@ import fr from './fr.js';
 import { createEnhancer } from './enhancer.js';
 import { mermaidType } from './mermaid-source.js';
 import { themeCssFor, themeVariablesFor } from './theme.js';
+import { Viewer, VIEWER_CSS } from './viewer.jsx';
 
 const NS = 'mermaid';
 
@@ -133,13 +134,12 @@ const CSS = `
 .mmd-btn[aria-pressed="true"] { background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-primary); }
 .mmd-btn svg { width: 15px; height: 15px; display: block; }
 .mmd-canvas { padding: 4px 28px 4px 0; overflow: auto; max-height: 640px; }
-.mmd-canvas[data-expanded="true"] { max-height: none; }
 .mmd-canvas svg { display: block; max-width: 100%; height: auto; margin: 0; }
 .mmd-source { margin: 8px 0 0; padding: 12px; border-radius: 10px; background: var(--dsw-alias-bg-layer-1); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.5; color: var(--dsw-alias-label-secondary); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 260px; overflow: auto; }
 .mmd-state { padding: 8px 0; font-size: 12px; line-height: 1.5; color: var(--dsw-alias-label-secondary); }
 .mmd-state[data-error="true"] { color: var(--dsw-alias-state-error-primary); }
 .mmd-detail { display: block; margin-top: 2px; font-size: 11px; opacity: .85; overflow-wrap: anywhere; }
-`;
+`+VIEWER_CSS;
 
 const iconProps = { viewBox: '0 0 16 16', 'aria-hidden': true, focusable: 'false', fill: 'none', stroke: 'currentColor', strokeWidth: 1.3, strokeLinecap: 'round', strokeLinejoin: 'round' };
 
@@ -175,15 +175,6 @@ const ICON_EXPAND = (
     <path d="M2.5 13.5 7 9" />
   </svg>
 );
-const ICON_COLLAPSE = (
-  <svg {...iconProps}>
-    <path d="M13.5 6.5h-4v-4" />
-    <path d="M2.5 9.5h4v4" />
-    <path d="M13.5 2.5 9 7" />
-    <path d="M2.5 13.5 7 9" />
-  </svg>
-);
-
 /**
  * Subscribe to one observable snapshot source.
  * @param {{ getSnapshot: () => any, subscribe: (fn: () => void) => () => void } | undefined} source - Source.
@@ -236,7 +227,7 @@ function DiagramCard({ source, scheme, t, onError }) {
   const type = mermaidType(source);
   const [view, setView] = React.useState({ status: 'loading' });
   const [showSource, setShowSource] = React.useState(false);
-  const [expanded, setExpanded] = React.useState(false);
+  const [viewing, setViewing] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
   const cacheKey = `${scheme}\u0000${source}`;
 
@@ -300,16 +291,18 @@ function DiagramCard({ source, scheme, t, onError }) {
             {ICON_DOWNLOAD}
           </button>
         ) : null}
-        <button
-          type="button"
-          className="mmd-btn"
-          aria-pressed={expanded}
-          aria-label={expanded ? t('collapse') : t('expand')}
-          title={expanded ? t('collapse') : t('expand')}
-          onClick={() => setExpanded((open) => !open)}
-        >
-          {expanded ? ICON_COLLAPSE : ICON_EXPAND}
-        </button>
+        {view.status === 'ready' ? (
+          <button
+            type="button"
+            className="mmd-btn"
+            aria-haspopup="dialog"
+            aria-label={t('expand')}
+            title={t('expand')}
+            onClick={() => setViewing(true)}
+          >
+            {ICON_EXPAND}
+          </button>
+        ) : null}
         <button
           type="button"
           className="mmd-btn"
@@ -330,9 +323,20 @@ function DiagramCard({ source, scheme, t, onError }) {
         </div>
       ) : null}
       {view.status === 'ready' ? (
-        <div className="mmd-canvas" data-expanded={expanded} dangerouslySetInnerHTML={{ __html: view.svg }} />
+        <div className="mmd-canvas" dangerouslySetInnerHTML={{ __html: view.svg }} />
       ) : null}
       {showSource ? <pre className="mmd-source">{source}</pre> : null}
+      {viewing && view.status === 'ready' ? (
+        <Viewer
+          svg={view.svg}
+          source={source}
+          scheme={scheme}
+          t={t}
+          render={renderDiagram}
+          onDownload={(svg) => downloadSvg(svg, `diagram-${type === '' ? 'mermaid' : type}`)}
+          onClose={() => setViewing(false)}
+        />
+      ) : null}
     </div>
   );
 }
