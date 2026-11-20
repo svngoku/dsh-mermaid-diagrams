@@ -32,6 +32,48 @@ plugin restores every block.
 
 English and French copy is registered through the Client locale service.
 
+## Examples
+
+Paste the source of any file in [`examples/`](./examples) into a chat reply inside a
+```` ```mermaid ```` fence and it renders in place.
+
+### Diagram in a message
+
+[`examples/architecture.mmd`](./examples/architecture.mmd)
+
+```text
+architecture-beta
+  group backend(cloud)[Backend]
+  service actions(server)[Actions] in backend
+  service db(database)[Convex DB] in backend
+  actions:R --> L:db
+```
+
+The code block above is replaced by the rendered diagram, with no border or header:
+
+![Architecture diagram rendered in place](./docs/images/architecture.png)
+
+Hover tools appear at the top right of every diagram: view source, download SVG,
+expand and copy.
+
+![Hover tools: view source, download SVG, expand, copy](./docs/images/card-tools.png)
+
+### Full-screen viewer
+
+**Expand** opens the viewer with **Edit code**, download and close at the top right
+and the zoom control at the bottom.
+
+![Full-screen viewer](./docs/images/viewer.png)
+
+A taller diagram, fitted to the screen and zoomed to 65%
+([`examples/flowchart.mmd`](./examples/flowchart.mmd)):
+
+![Full-screen viewer showing a flowchart](./docs/images/viewer-flowchart.png)
+
+**Edit code** opens the source next to the diagram, which redraws as you type:
+
+![Full-screen viewer with the code editor open](./docs/images/viewer-editor.png)
+
 ## Layout
 
 | Path | Role |

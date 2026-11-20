@@ -1,0 +1,10 @@
+flowchart TD
+  Q{Tests pass?}
+  Q -- Yes --> P[Promote candidate build]
+  Q -- No --> K[Keep current build]
+  P --> A[Active release]
+  K --> A
+  A --> R[Run regression suite and log results]
+  R --> M[Propose a change]
+  M --> S[Compare both builds on held-out checks]
+  S --> Q

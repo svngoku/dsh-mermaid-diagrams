@@ -1,0 +1,5 @@
+architecture-beta
+  group backend(cloud)[Backend]
+  service actions(server)[Actions] in backend
+  service db(database)[Convex DB] in backend
+  actions:R --> L:db
