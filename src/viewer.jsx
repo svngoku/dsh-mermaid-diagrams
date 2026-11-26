@@ -4,6 +4,7 @@
  */
 import * as React from 'react';
 import { createPortal } from 'react-dom';
+import { highlightLines } from './highlight.js';
 
 import { clampZoom, fitZoom, MAX_ZOOM, MIN_ZOOM, naturalSize, ZOOM_STEP } from './viewer-math.js';
 
@@ -47,7 +48,17 @@ export const VIEWER_CSS = `
 .mmd-lb-panel[data-scheme="dark"] { background: #1b1b1b; color: #eee; }
 .mmd-lb-panel[data-editing="true"] { grid-template-columns: minmax(260px, 38%) minmax(0, 1fr); }
 .mmd-lb-editor { display: flex; flex-direction: column; min-width: 0; border-right: 1px solid rgba(128,128,128,.25); background: rgba(128,128,128,.06); }
-.mmd-lb-code { flex: 1; width: 100%; box-sizing: border-box; resize: none; border: 0; outline: none; background: transparent; color: inherit; padding: 22px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 1.6; tab-size: 2; }
+.mmd-lb-codebox { position: relative; flex: 1; min-height: 0; }
+.mmd-lb-code, .mmd-lb-paint { position: absolute; inset: 0; margin: 0; border: 0; box-sizing: border-box; padding: 22px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 1.6; tab-size: 2; white-space: pre-wrap; overflow-wrap: break-word; overflow: auto; }
+.mmd-lb-paint { overflow: hidden; pointer-events: none; color: inherit; }
+.mmd-lb-code { resize: none; outline: none; background: transparent; color: transparent; caret-color: currentColor; }
+.mmd-lb-code::selection { background: rgba(59, 108, 246, .3); }
+.mmd-lb-pane[data-scheme="dark"] .mmd-tok-keyword { color: #b9b9b9; font-weight: 600; }
+.mmd-lb-pane[data-scheme="dark"] .mmd-tok-name { color: #e6e6e6; }
+.mmd-lb-pane[data-scheme="dark"] .mmd-tok-label { color: #8fd0a0; }
+.mmd-lb-pane[data-scheme="dark"] .mmd-tok-operator { color: #b0b0b0; }
+.mmd-lb-pane[data-scheme="dark"] .mmd-tok-comment { color: #7c7c7c; }
+.mmd-lb-pane[data-scheme="dark"] .mmd-tok-type { color: #c9c9c9; }
 .mmd-lb-error { padding: 10px 22px 14px; font-size: 12px; line-height: 1.5; color: #c93c3c; overflow-wrap: anywhere; border-top: 1px solid rgba(128,128,128,.25); }
 .mmd-lb-scroll { overflow: auto; min-width: 0; min-height: 0; display: flex; cursor: grab; touch-action: none; }
 .mmd-lb-scroll[data-dragging="true"] { cursor: grabbing; user-select: none; }
@@ -61,6 +72,12 @@ export const VIEWER_CSS = `
 .mmd-lb-step svg { width: 20px; height: 20px; display: block; }
 .mmd-lb-percent { appearance: none; border: 0; background: transparent; cursor: pointer; min-width: 84px; height: 44px; border-radius: 999px; font: inherit; font-size: 17px; color: #161616; font-variant-numeric: tabular-nums; }
 .mmd-lb-percent:hover { background: #ececec; }
+.mmd-lb-pane[data-scheme="light"] .mmd-tok-keyword { color: #0b6bcb; font-weight: 600; }
+.mmd-lb-pane[data-scheme="light"] .mmd-tok-name { color: #161616; }
+.mmd-lb-pane[data-scheme="light"] .mmd-tok-label { color: #1a7f37; }
+.mmd-lb-pane[data-scheme="light"] .mmd-tok-operator { color: #6b6b6b; }
+.mmd-lb-pane[data-scheme="light"] .mmd-tok-comment { color: #8a8a8a; }
+.mmd-lb-pane[data-scheme="light"] .mmd-tok-type { color: #8250df; }
 @media (max-width: 720px) { .mmd-lb-panel[data-editing="true"] { grid-template-columns: minmax(0, 1fr); grid-template-rows: 40% 60%; } .mmd-lb-editor { border-right: 0; border-bottom: 1px solid rgba(128,128,128,.25); } }
 `;
 
@@ -76,6 +93,50 @@ export const VIEWER_CSS = `
  * @param {() => void} props.onClose - Close the viewer.
  * @returns {import('react').ReactPortal} The viewer, portaled to the document body.
  */
+/**
+ * Highlighted code editor: a transparent textarea over a painted copy of the
+ * same text, so typing, selection and scrolling stay native while the text is
+ * colored by the Mermaid highlighter.
+ * @param {{ value: string, onChange: (value: string) => void, label: string }} props - Editor input.
+ * @returns {import('react').ReactElement} Editor.
+ */
+function CodeEditor({ value, onChange, label }) {
+  const paintRef = React.useRef(null);
+  const codeRef = React.useRef(null);
+  const lines = React.useMemo(() => highlightLines(value), [value]);
+
+  // Keep the painted copy aligned with the textarea's scroll position.
+  const sync = React.useCallback(() => {
+    const code = codeRef.current;
+    const paint = paintRef.current;
+    if (code === null || paint === null) return;
+    paint.scrollTop = code.scrollTop;
+    paint.scrollLeft = code.scrollLeft;
+  }, []);
+
+  return (
+    <div className="mmd-lb-codebox">
+      <div ref={paintRef} className="mmd-lb-paint" aria-hidden="true">
+        {lines.map((html, index) => (
+          // eslint-disable-next-line react/no-danger -- the highlighter escapes every token.
+          <div key={index} dangerouslySetInnerHTML={{ __html: html === '' ? ' ' : html }} />
+        ))}
+      </div>
+      <textarea
+        ref={codeRef}
+        className="mmd-lb-code"
+        value={value}
+        spellCheck={false}
+        autoCapitalize="off"
+        autoCorrect="off"
+        aria-label={label}
+        onChange={(event) => onChange(event.target.value)}
+        onScroll={sync}
+      />
+    </div>
+  );
+}
+
 export function Viewer({ svg, source, scheme, t, render, onDownload, onClose }) {
   const [shown, setShown] = React.useState(svg);
   const [zoom, setZoom] = React.useState(1);
@@ -210,14 +271,8 @@ export function Viewer({ svg, source, scheme, t, render, onDownload, onClose }) 
         data-editing={editing}
       >
         {editing ? (
-          <div className="mmd-lb-editor">
-            <textarea
-              className="mmd-lb-code"
-              value={draft}
-              spellCheck={false}
-              aria-label={t('editCode')}
-              onChange={(event) => setDraft(event.target.value)}
-            />
+          <div className="mmd-lb-editor mmd-lb-pane" data-scheme={scheme}>
+            <CodeEditor value={draft} onChange={setDraft} label={t('editCode')} />
             {error === '' ? null : <div className="mmd-lb-error">{error}</div>}
           </div>
         ) : null}
