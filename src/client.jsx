@@ -1,6 +1,6 @@
 /**
  * Browser half: replaces every Mermaid code block in Chat with the rendered
- * diagram, in place.
+ * diagram, in place, using Pele (a small synchronous Mermaid renderer).
  *
  * Chat's shared Markdown renderer exposes no hook for a code fence's language,
  * so `enhancer.js` watches the page for rendered code blocks, mounts a diagram
@@ -14,7 +14,8 @@ import en from './en.js';
 import fr from './fr.js';
 import { createEnhancer } from './enhancer.js';
 import { mermaidType } from './mermaid-source.js';
-import { themeCssFor, themeVariablesFor } from './theme.js';
+import { diagramType, isValidDiagram, renderDiagram as renderPele } from './renderer.js';
+import { THEME_CSS } from './theme.js';
 import { Viewer, VIEWER_CSS } from './viewer.jsx';
 
 const NS = 'mermaid';
@@ -24,32 +25,14 @@ let schemeSource = null;
 
 const EMPTY_SUBSCRIBE = () => () => {};
 
-//#region Mermaid runtime
+//#region Rendering
 
-/** Rendered SVGs keyed by color scheme and source, newest last. */
+/** Rendered SVGs keyed by source, newest last. Colors are CSS variables, so a theme switch needs no entry per scheme. */
 const SVG_CACHE = new Map();
 const SVG_CACHE_LIMIT = 40;
 
-let mermaidPromise = null;
-let mermaidReadyFor = null;
-let renderSeq = 0;
-
 /**
- * Load the bundled Mermaid runtime once, keeping its module body out of first
- * paint.
- * @returns {Promise<any>} Mermaid API.
- */
-function loadMermaid() {
-  if (mermaidPromise === null) {
-    mermaidPromise = Promise.resolve()
-      .then(() => import('mermaid'))
-      .then((module) => module.default ?? module);
-  }
-  return mermaidPromise;
-}
-
-/**
- * Resolve the host text font so diagram labels match ordinary Chat copy.
+ * Resolve the host text font so diagram labels are measured in the font they are drawn in.
  * @returns {string} CSS font family list, or an empty string when unavailable.
  */
 function hostFontFamily() {
@@ -61,33 +44,12 @@ function hostFontFamily() {
 }
 
 /**
- * Render one Mermaid source to an SVG document string.
+ * Render one source to an SVG document string.
  * @param {string} code - Mermaid source.
- * @param {'light' | 'dark'} scheme - Active host color scheme.
- * @returns {Promise<string>} Serialized SVG.
+ * @returns {Promise<string>} Serialized SVG; rejects with a `PeleError` for invalid source.
  */
-async function renderDiagram(code, scheme) {
-  const mermaid = await loadMermaid();
-  if (mermaidReadyFor !== scheme) {
-    mermaid.initialize({
-      startOnLoad: false,
-      securityLevel: 'strict',
-      suppressErrorRendering: true,
-      theme: 'base',
-      themeVariables: themeVariablesFor(scheme, hostFontFamily()),
-      themeCSS: themeCssFor(scheme),
-      flowchart: { curve: 'step', htmlLabels: true, padding: 14, nodeSpacing: 40, rankSpacing: 48, useMaxWidth: true },
-      sequence: { useMaxWidth: true, mirrorActors: true, actorMargin: 48, boxMargin: 6, messageMargin: 34, noteMargin: 8, width: 150, height: 48, actorFontSize: 13, messageFontSize: 12, noteFontSize: 12 },
-      state: { useMaxWidth: true },
-      er: { useMaxWidth: true, layoutDirection: 'TB', entityPadding: 12 },
-      maxTextSize: 200_000,
-      maxEdges: 1_000,
-    });
-    mermaidReadyFor = scheme;
-  }
-  renderSeq += 1;
-  const { svg } = await mermaid.render(`mermaid-diagrams-${String(renderSeq)}`, code);
-  return svg;
+async function renderDiagram(code) {
+  return renderPele(code, hostFontFamily()).svg;
 }
 
 /**
@@ -139,7 +101,7 @@ const CSS = `
 .mmd-state { padding: 8px 0; font-size: 12px; line-height: 1.5; color: var(--dsw-alias-label-secondary); }
 .mmd-state[data-error="true"] { color: var(--dsw-alias-state-error-primary); }
 .mmd-detail { display: block; margin-top: 2px; font-size: 11px; opacity: .85; overflow-wrap: anywhere; }
-`+VIEWER_CSS;
+`+THEME_CSS+VIEWER_CSS;
 
 const iconProps = { viewBox: '0 0 16 16', 'aria-hidden': true, focusable: 'false', fill: 'none', stroke: 'currentColor', strokeWidth: 1.3, strokeLinecap: 'round', strokeLinejoin: 'round' };
 
@@ -224,12 +186,12 @@ function downloadSvg(svg, name) {
  * @returns {import('react').ReactElement} Card.
  */
 function DiagramCard({ source, scheme, t, onError }) {
-  const type = mermaidType(source);
+  const type = diagramType(source);
   const [view, setView] = React.useState({ status: 'loading' });
   const [showSource, setShowSource] = React.useState(false);
   const [viewing, setViewing] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
-  const cacheKey = `${scheme}\u0000${source}`;
+  const cacheKey = source;
 
   React.useEffect(() => {
     const cached = readCached(cacheKey);
@@ -239,7 +201,7 @@ function DiagramCard({ source, scheme, t, onError }) {
     }
     let alive = true;
     setView({ status: 'loading' });
-    renderDiagram(source, scheme).then(
+    renderDiagram(source).then(
       (svg) => {
         writeCached(cacheKey, svg);
         if (alive) setView({ status: 'ready', svg });
@@ -252,7 +214,7 @@ function DiagramCard({ source, scheme, t, onError }) {
     return () => {
       alive = false;
     };
-  }, [cacheKey, source, scheme]);
+  }, [cacheKey, source]);
 
   const failedRender = view.status === 'error';
   React.useEffect(() => {
@@ -265,10 +227,10 @@ function DiagramCard({ source, scheme, t, onError }) {
     return () => clearTimeout(timer);
   }, [copied]);
 
-  const label = type === '' ? t('diagram') : `${t('name')} · ${t(`type.${type}`)}`;
+  const label = t('diagram');
 
   return (
-    <div className="mmd-card" role="group" aria-label={label}>
+    <div className="mmd-card" role="group" aria-label={label} data-scheme={scheme}>
       <div className="mmd-tools">
         <button
           type="button"
@@ -397,18 +359,13 @@ class CardBoundary extends React.Component {
 export const inject = ['locale', 'theme'];
 
 /**
- * Whether a code block holds complete, valid Mermaid.
+ * Whether a code block holds complete, valid diagram source. A block that is
+ * still being streamed fails to parse, so it stays plain code until it is whole.
  * @param {string} source - Code read from a block.
- * @returns {Promise<boolean>} Validity; false for anything unparsable or still streaming.
+ * @returns {Promise<boolean>} Validity.
  */
 async function isValidMermaid(source) {
-  try {
-    const mermaid = await loadMermaid();
-    const result = await mermaid.parse(source, { suppressErrors: true });
-    return result !== false;
-  } catch {
-    return false;
-  }
+  return isValidDiagram(source);
 }
 
 /**

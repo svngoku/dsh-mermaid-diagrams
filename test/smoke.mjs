@@ -17,7 +17,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import { createEnhancer, HIDDEN_ATTR, HOST_ATTR } from '../src/enhancer.js';
-import { diagramsOf, extractMermaid, mermaidType } from '../src/mermaid-source.js';
+import { extractMermaid, mermaidType } from '../src/mermaid-source.js';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const nodeRequire = createRequire(import.meta.url);
@@ -223,7 +223,6 @@ function harness(validate = async () => true) {
   assert.deepEqual(extractMermaid('```mermaid\npie\n"a": 1\n```'), ['pie\n"a": 1']);
   assert.equal(mermaidType('block of text'), '');
   assert.equal(mermaidType('%% note\nsequenceDiagram\n A->>B: hi'), 'sequence');
-  assert.equal(diagramsOf([{ blocks: [{ kind: 'text', text: '```mermaid\nerDiagram\n```' }] }]).length, 1);
 }
 
 {

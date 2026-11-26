@@ -19,7 +19,8 @@ plugin restores every block.
 - Follows streaming: while a reply is being written the card tracks the block and
   updates each time the code is valid Mermaid again.
 - Falls back to the plain code block when a diagram cannot be rendered.
-- Renders with Mermaid 12 bundled into the plugin (offline, no CDN), with a flat
+- Renders with [Pele](https://pele.run), a small synchronous Mermaid renderer bundled
+  into the plugin (offline, no CDN), with a flat
   grayscale theme: light-gray rounded nodes, hairline edges, small arrowheads,
   thin cluster boxes, plus a matching dark palette that follows `theme/change`.
 - A chrome-less card with hover tools at the top right: view source, download
@@ -53,20 +54,14 @@ The code block above is replaced by the rendered diagram, with no border or head
 
 ![Architecture diagram rendered in place](./docs/images/architecture.png)
 
-Hover tools appear at the top right of every diagram: view source, download SVG,
-expand and copy.
-
-![Hover tools: view source, download SVG, expand, copy](./docs/images/card-tools.png)
+Hovering a diagram shows its tools at the top right: view source, download SVG,
+expand and copy (visible in the image above).
 
 ### Full-screen viewer
 
 **Expand** opens the viewer with **Edit code**, download and close at the top right
-and the zoom control at the bottom.
-
-![Full-screen viewer](./docs/images/viewer.png)
-
-A taller diagram, fitted to the screen and zoomed to 65%
-([`examples/flowchart.mmd`](./examples/flowchart.mmd)):
+and the zoom control at the bottom. This flowchart is
+[`examples/flowchart.mmd`](./examples/flowchart.mmd), fitted to the screen:
 
 ![Full-screen viewer showing a flowchart](./docs/images/viewer-flowchart.png)
 
@@ -84,8 +79,9 @@ A taller diagram, fitted to the screen and zoomed to 65%
 | `src/enhancer.js` | DOM watcher: finds, hides and replaces Mermaid code blocks. |
 | `src/viewer.jsx` | Full-screen viewer (zoom, pan, live code editor). |
 | `src/viewer-math.js` | Pure zoom and sizing math, unit-tested. |
-| `src/theme.js` | Grayscale Mermaid theme variables and CSS. |
-| `src/mermaid-source.js` | Diagram type detection and Markdown extraction. |
+| `src/renderer.js` | Pele rendering, validation and diagram-type detection. |
+| `src/theme.js` | Grayscale `--pele-*` CSS theme, light and dark. |
+| `src/mermaid-source.js` | Markdown fence extraction and the diagram-keyword gate. |
 | `src/en.js`, `src/fr.js` | Runtime dictionaries. |
 | `locale/*.json` | Plugin-inventory title and description. |
 | `build.mjs` | Bundles `src/client.jsx` (plus Mermaid) into `client.js`. |
@@ -120,8 +116,13 @@ code.
   and may need a selector update if that markup changes.
 - It applies to every rendered code block in the page, not only Chat.
 - Only complete, valid Mermaid is replaced; invalid code stays visible as code.
-- `client.js` is ~5 MiB because Mermaid is bundled; its module body only runs when
-  the first candidate block is validated.
+- `client.js` is ~0.7 MiB because Pele is bundled; it is content-cached by the
+  browser after the first load.
+
+## Credits
+
+Diagrams are rendered by [Pele](https://github.com/obsidianmd/pele) (MIT), a small
+synchronous Mermaid renderer.
 
 ## License
 
