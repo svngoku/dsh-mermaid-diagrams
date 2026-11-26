@@ -65,9 +65,10 @@ and the zoom control at the bottom. This flowchart is
 
 ![Full-screen viewer showing a flowchart](./docs/images/viewer-flowchart.png)
 
-**Edit code** opens the source next to the diagram, which redraws as you type:
+**Edit code** opens the source next to the diagram with Mermaid syntax highlighting
+(keywords, labels, arrows and comments), and the diagram redraws as you type:
 
-![Full-screen viewer with the code editor open](./docs/images/viewer-editor.png)
+![Full-screen viewer with the code editor open, Mermaid source syntax highlighted](./docs/images/viewer-editor.png)
 
 ## Layout
 
